@@ -14,6 +14,7 @@ button_close = "END"
 
 
 def messege_handler(update: Update, contex: CallbackContext):
+    file_name = str(update.message.from_user.name)
     reply_markup = ReplyKeyboardMarkup(
 
         keyboard=[[KeyboardButton(text=button_self),
@@ -25,28 +26,28 @@ def messege_handler(update: Update, contex: CallbackContext):
     text = update.message.text
     try:
         if (text == button_close):
-            create_write_to_file(text)
+            create_write_to_file(file_name,text)
             update.message.reply_text(
                 text="Свято си скінчило на жуй файл",
                 reply_markup=reply_markup
 
             )
         elif (text == button_plus):
-            create_write_to_file(text)
+            create_write_to_file(file_name,text)
             update.message.reply_text(
                 text="Ого ти нажав '+';",
                 reply_markup=reply_markup
 
             )
         elif (text == button_self):
-            create_write_to_file(text)
+            create_write_to_file(file_name,text)
             update.message.reply_text(
                 text="Ого ти нажав 'C';",
                 reply_markup=reply_markup
 
             )
         elif (text == button_minus):
-            create_write_to_file(text)
+            create_write_to_file(file_name,text)
             update.message.reply_text(
                 text="Ого ти нажав '-';",
                 reply_markup=reply_markup
@@ -61,6 +62,7 @@ def messege_handler(update: Update, contex: CallbackContext):
 
             )
     except ValueError:
+
         update.message.reply_text(
             text='йобаний шашлик то якась хуйня',
 
@@ -77,8 +79,9 @@ def messege_handler(update: Update, contex: CallbackContext):
 #         text=text
 #     )
 #     print(text)
-def create_write_to_file(result):
-    f = open("terapia.csv", 'a')
+def create_write_to_file(file_name,result):
+
+    f = open(file_name+"_terapia.csv", 'a')
 
     f.write(str(result))
 
