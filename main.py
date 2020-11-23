@@ -1,12 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
-import pandas as pd
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
-import xlwt
-import static_data
-from openpyxl.workbook import Workbook
-import xlsxwriter
 from collections import defaultdict
 
 user_dict = defaultdict(list)
@@ -21,7 +16,12 @@ button_plus = KeyboardButton('/terapia')
 
 button_close = KeyboardButton('/send_file')
 bot = Bot(token=TOKEN)
-list_task = ["test1", "test2", "test3", "test4", "test5", "test6","FINISH"]
+text_test = "ckndvondvodovndovn"
+protocol_1 = (text_test, "test1.2", "test1.3")
+protocol_2 = ("test2", "test2.2", "test2.3")
+protocol_3 = ("test3", "test3.2", "test3.3")
+list_task = [protocol_1, protocol_2, protocol_3,
+             ("FINISH", 0)]
 dp = Dispatcher(bot)
 list_test = ["Test protocol"]
 markup_big = ReplyKeyboardMarkup()
@@ -37,13 +37,16 @@ markup_big.row(
 @dp.callback_query_handler()
 async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
     code = callback_query.data[-1]
-    test = len(list_task) + 1
+    test = len(list_task)
+
+    test_2 = len(user_dict[callback_query.from_user.first_name]) + 1
+    print(test_2)
     try:
 
         if len(user_dict[callback_query.from_user.first_name]) < test:
-
+            print(test_2)
             await bot.send_message(callback_query.from_user.id,
-                                   list_task[len(user_dict[callback_query.from_user.first_name])+1],
+                                   list_task[test_2][0],
                                    reply_markup=inline_kb_full)
             print(len(user_dict[callback_query.from_user.first_name]))
 
@@ -51,7 +54,6 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
                 code = int(code)
             if code == 1:
                 user_dict[callback_query.from_user.first_name].append("+")
-
 
                 await bot.answer_callback_query(callback_query.id)
 
@@ -79,14 +81,14 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
 # bot.py
 @dp.message_handler(commands=['terapia'])
 async def process_hi7_command(message: types.Message):
-    await message.reply(list_task[len(user_dict[message.from_user.first_name])], reply_markup=inline_kb_full)
+    await message.reply(list_task[len(user_dict[message.from_user.first_name])][0], reply_markup=inline_kb_full)
 
 
 @dp.message_handler(commands=['send_file'])
 async def process_file_command(message: types.Message):
     # write_to_file(message.from_user.first_name + "_" + str(message.from_user.id))
     create_write_to_file(message.from_user.first_name)
-    with open(message.from_user.first_name  + ".csv") as file:
+    with open(message.from_user.first_name + ".csv") as file:
         await message.reply("Ось твій файлик", reply_markup=markup_big)
         await message.answer_document(file)
 
