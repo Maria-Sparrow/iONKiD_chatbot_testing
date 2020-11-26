@@ -6,7 +6,7 @@ from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
 from collections import defaultdict
 
-TOKEN = '1413602973:AAH_6QtvLAj53H3Ri29ln1Vhr9kgRHkFpEQ'
+TOKEN = **********************************
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
