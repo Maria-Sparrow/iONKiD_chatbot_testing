@@ -60,8 +60,6 @@ async def process_file_command(message: types.Message):
     user_dict_complex_task[message.from_user.first_name] = 0
     user_dict_protocol_number[message.from_user.first_name] = -1
 
-    # FIXME csv is displayed correctly on the phone because Telegram only supports UTF-8;
-    # windows, on the other hand, is parsing to CP-1251 by default
     write_to_file(message.from_user.first_name)
     with open(message.from_user.first_name + ".csv", encoding='utf8') as file:
         await message.reply('Генерую файл з результатами...', reply_markup=markup_launch)
@@ -159,7 +157,7 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
 
             else:
                 user_dict_complex_task[callback_query.from_user.first_name] -= 1
-                print(str(user_dict_complex_task[callback_query.from_user.first_name]) + 'спростити')
+                print(str(user_dict_complex_task[callback_query.from_user.first_name]) + ' спростити')
                 await send_task(callback_query)
 
         elif code == 5:
@@ -167,7 +165,7 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
             try:
                 if user_dict_complex_task[callback_query.from_user.first_name] < 2:
                     user_dict_complex_task[callback_query.from_user.first_name] += 1
-                    print(str(user_dict_complex_task[callback_query.from_user.first_name]) + 'ускладнити')
+                    print(str(user_dict_complex_task[callback_query.from_user.first_name]) + ' ускладнити')
                     print(user_dict_complex_task[callback_query.from_user.first_name])
                     await send_task(callback_query)
 
@@ -184,25 +182,24 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
         print(str(user_dict) + ' zbhjh')
 
 
-# TODO придумати нормальні назви для цих методів
-
-
-async def send_task(callback_query: types.CallbackQuery):
-    await bot.send_message(
-        callback_query.from_user.id,
-        'Протокол: ' + str(user_dict_protocol_number[callback_query.from_user.first_name] + 1) + '\n' +
-        'Складність: ' + str(user_dict_complex_task[callback_query.from_user.first_name] + 1) + '\n' +
-        list_task[user_dict_protocol_number[callback_query.from_user.first_name]]
-        [user_dict_complex_task[callback_query.from_user.first_name]],
-        reply_markup=inline_kb_full)
-
-
-async def reply_task(message: types.Message, flag='none'):
-    user_dict_flag_task[message.from_user.first_name] = 1
-    await message.reply('Протокол: ' + str(user_dict_protocol_number[message.from_user.first_name] + 1) + '\n' +
-                        'Складність: ' + str(user_dict_complex_task[message.from_user.first_name] + 1) + '\n' +
-                        list_task[user_dict_protocol_number[message.from_user.first_name]][
-                            user_dict_complex_task[message.from_user.first_name]], reply_markup=inline_kb_full)
+# bot should reply to types.CallbackQuery with a new message, and reply to types.Message with 'reply'
+async def send_task(message_source):
+    message = markdown.bold('Протокол: ') + str(user_dict_protocol_number[message_source.from_user.first_name] + 1) + \
+              '\n' + \
+              markdown.bold('Складність: ') + str(user_dict_complex_task[message_source.from_user.first_name] + 1) + \
+              '\n\n' + \
+              list_task[user_dict_protocol_number[message_source.from_user.first_name]][
+                  user_dict_complex_task[message_source.from_user.first_name]]
+    if isinstance(message_source, types.CallbackQuery):
+        await bot.send_message(message_source.from_user.id,
+                               message,
+                               reply_markup=inline_kb_full,
+                               parse_mode=ParseMode.MARKDOWN)
+    elif isinstance(message_source, types.Message):
+        user_dict_flag_task[message_source.from_user.first_name] = 1
+        await message_source.reply(message,
+                                   reply_markup=inline_kb_full,
+                                   parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(text=['Наступна вправа'])
@@ -211,10 +208,6 @@ async def process_hi7_command(message: types.Message):
         print(user_dict_flag_task[message.from_user.first_name])
         if user_dict_flag_task[message.from_user.first_name] != 0:
             print('e?')
-            test = [1, 2, 3, 4, 5, 6, 7]
-
-            print(str(test[:3]))
-            print(str(test[3:6]))
             user_dict_complex_task[message.from_user.first_name] = 0
             user_dict_protocol_number[message.from_user.first_name] += 1
         # щоб не дійти до #16-заглушки
@@ -222,7 +215,7 @@ async def process_hi7_command(message: types.Message):
             user_dict_protocol_number[message.from_user.first_name] = len(list_task) - 2
             await message.reply('На сьогодні вправи закінчилися.')
         else:
-            await reply_task(message, flag='next')
+            await send_task(message)
 
         print('eeeeeeeeeeeeeeeeeeeeee?')
 
@@ -244,7 +237,7 @@ async def process_hi7_command(message: types.Message):
             user_dict_protocol_number[message.from_user.first_name] = -1
             await message.reply('Попередніх вправ немає.')
         else:
-            await reply_task(message, flag='prev')
+            await send_task(message)
         print('ПРОТОКОЛ НОМЕР ' + str(user_dict_protocol_number[message.from_user.first_name]))
 
         print('eeeeeeeeeeeeeeeeeeeeee?')
@@ -256,7 +249,7 @@ async def process_hi7_command(message: types.Message):
 
 
 def write_to_file(file_name):
-    with codecs.open(file_name + '.csv', "a", encoding='utf-8') as f:
+    with codecs.open(file_name + '.csv', "a", encoding='utf-8-sig') as f:
         f.write('\n')
         for protocol_number in range(1, 16):
             f.write("Протокол #" + str(protocol_number))
