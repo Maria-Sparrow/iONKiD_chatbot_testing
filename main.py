@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import codecs
 import csv
+import os
 from collections import defaultdict
 
 from aiogram import Bot, types
@@ -64,6 +65,14 @@ async def process_file_command(message: types.Message):
     with open(message.from_user.first_name + ".csv", encoding='utf8') as file:
         await message.reply('Генерую файл з результатами...', reply_markup=markup_launch)
         await message.answer_document(file)
+    os.remove(message.from_user.first_name + ".csv")
+    for i in range(0, 16):
+        for j in range(0, 4):
+            user_dict[str(message.from_user.first_name) + "Протокол:" + str(
+                user_dict_protocol_number[message.from_user.first_name] + i) + "Складність:" + str(
+                user_dict_complex_task[message.from_user.first_name] + j)] = []
+    # TODO LOGGING
+    print(user_dict)
 
 
 @dp.message_handler(commands=['help'])
@@ -112,6 +121,7 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
             print(user_dict)
             complex_empty = user_dict_complex_task[callback_query.from_user.first_name] + 1
             print(str(complex_empty) + ' пропуски')
+            # TODO AVOID DUPLICATES
             if complex_empty == 1:
                 user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
                     user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
