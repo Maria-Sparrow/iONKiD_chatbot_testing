@@ -1,19 +1,25 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+import codecs
 import csv
-
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram import Bot, types
-from aiogram.dispatcher import Dispatcher
-from aiogram.utils import executor
 from collections import defaultdict
 
-TOKEN = **********************************
+from aiogram import Bot, types
+from aiogram.dispatcher import Dispatcher
+from aiogram.types import ParseMode
+from aiogram.utils import executor, markdown
+
+from task_buttons import inline_kb_full
+from therapy_buttons import markup_launch, markup_main, markup_finish
+
+TOKEN = '1475672387:AAGkNWnDIh8rBt0eclIaEfKkaNqKF1CEiGQ'
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 user_dict = defaultdict(list)
 
 list_task = []
-with open('therapy_tasks.txt', encoding="utf8") as csv_file:
+with open('therapy_tasks.txt', encoding='utf-8') as csv_file:
     csv_reader = csv.reader(csv_file, delimiter='%')
     line_count = 0
     for row in csv_reader:
@@ -21,80 +27,59 @@ with open('therapy_tasks.txt', encoding="utf8") as csv_file:
         list_task.append(protocol)
         line_count = line_count + 1
     print(line_count)
-    list_task.append(("FINISH", 0))
+    list_task.append(('FINISH', 0))
 
-# ------------- Buttons -------------
-inline_kb_full = InlineKeyboardMarkup(row_width=2)
-inline_btn_1 = InlineKeyboardButton('+', callback_data='btn1')
-inline_btn_2 = InlineKeyboardButton('-', callback_data='btn2')
-inline_btn_3 = InlineKeyboardButton('Self', callback_data='btn3')
-inline_btn_4 = InlineKeyboardButton('Спростити', callback_data='btn4')
-inline_btn_5 = InlineKeyboardButton('Ускладнити', callback_data='btn5')
-inline_kb_full.row(inline_btn_1, inline_btn_2, inline_btn_3).row(inline_btn_4, inline_btn_5)
-
-
-###########################################################
-# ---------- Кнопки ----------
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
-    await message.reply("Привітик!\nНапиши мені якщо тобі скучно)", reply_markup=markup_main)
-
-
-# * Launch
-button_launch = KeyboardButton('Почати терапію')
-markup_launch = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-markup_launch.add(button_launch)
+    await message.reply(
+        'Вітаю, ' + message.from_user.full_name + '!\n Натисніть на ' + markdown.bold('"Почати терапію"') +
+        ', коли будете готові.',
+        reply_markup=markup_launch,
+        parse_mode=ParseMode.MARKDOWN
+    )
 
 
 @dp.message_handler(text=['Почати терапію'])
 async def process_start_command(message: types.Message):
-    await message.reply("Терапія почалася", reply_markup=markup_main)
-
-
-button_next_exercise = KeyboardButton('Наступна вправа')
-button_previous_exercise = KeyboardButton('Попередня вправа')
-button_end_therapy = KeyboardButton('Завершити терапію')
-markup_main = ReplyKeyboardMarkup(resize_keyboard=True)
-markup_main.row(button_previous_exercise, button_next_exercise).add(button_end_therapy)
-
-
-#
-# @dp.message_handler(text=['Наступна вправа'])
-# async def process_help_command(message: types.Message):
-#     await message.reply("Переходимо до наступної вправи", reply_markup=markup_main)
+    await message.reply('Терапія почалася.', reply_markup=markup_main)
 
 
 @dp.message_handler(text=['Завершити терапію'])
 async def process_help_command(message: types.Message):
-    await message.reply("Підтвердіть дію", reply_markup=markup_finish)
-
-
-button_go_back = KeyboardButton('Повернутися назад')
-button_generate_file = KeyboardButton('Згенерувати файл')
-markup_finish = ReplyKeyboardMarkup(resize_keyboard=True)
-markup_finish.add(button_go_back).add(button_generate_file)
+    await message.reply('Будь ласка, підтвердіть дію.', reply_markup=markup_finish)
 
 
 @dp.message_handler(text=['Повернутися назад'])
 async def process_help_command(message: types.Message):
-    await message.reply("ok", reply_markup=markup_main)
+    await message.reply('Повертаємось...', reply_markup=markup_main)
 
 
-@dp.message_handler(text=['Згенерувати файл'])
+@dp.message_handler(text=['Згенерувати файл з результатами'])
 async def process_file_command(message: types.Message):
-    # write_to_file(message.from_user.first_name + "_" + str(message.from_user.id))
     user_dict_complex_task[message.from_user.first_name] = 0
     user_dict_protocol_number[message.from_user.first_name] = -1
-    create_write_to_file(message.from_user.first_name)
-    with open(message.from_user.first_name + ".csv") as file:
-        await message.reply("Ось твій файлик", reply_markup=markup_launch)
+
+    # FIXME csv is displayed correctly on the phone because Telegram only supports UTF-8;
+    # windows, on the other hand, is parsing to CP-1251 by default
+    write_to_file(message.from_user.first_name)
+    with open(message.from_user.first_name + ".csv", encoding='utf8') as file:
+        await message.reply('Генерую файл з результатами...', reply_markup=markup_launch)
         await message.answer_document(file)
 
 
 @dp.message_handler(commands=['help'])
 async def process_help_command(message: types.Message):
-    await message.reply("Напиши щось...")
+    await message.reply('Ви берете участь у закритому тестуванні бота, якого розробляють студенти-другокурсники ' +
+                        markdown.bold('Львівської політехніки') + ', спеціальності ' +
+                        markdown.bold('"Інтернет речей"') +
+                        '. Я створений, щоб допомагати вам проводити терапії:\n\n'
+                        '– буду почергово виводити короткий зміст вправ, які потрібно виконати з дитиною сьогодні;\n\n'
+                        '– дозволю вам швидше переключатися між різними рівнями складності;\n\n'
+                        '– запам\'ятовуватиму результати кожної ітерації.\n\n'
+                        'Для того, щоб розпочати терапію, просто натисніть на кнопку.',
+                        parse_mode=ParseMode.MARKDOWN
+                        )
 
 
 ###########################################################
@@ -110,33 +95,26 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
     print(user_dict_flag_task)
     code = callback_query.data[-1]
 
-    print(str(user_dict_complex_task[callback_query.from_user.first_name]) + " fuck")
+    print(str(user_dict_complex_task[callback_query.from_user.first_name]) + ' fuck')
 
     try:
         # обмеження к-ті тасок
 
-        print(str(user_dict_complex_task[callback_query.from_user.first_name]) + " test")
+        print(str(user_dict_complex_task[callback_query.from_user.first_name]) + ' test')
         print(user_dict_complex_task)
 
-        print(str(len(user_dict[callback_query.from_user.first_name])) + " чорт")
+        print(str(len(user_dict[callback_query.from_user.first_name])) + ' чорт')
 
         if code.isdigit():
             code = int(code)
 
-        if code == 1:
-            # if user_dict_complex_task[callback_query.from_user.first_name] + 1==1:
-            #     user_dict[str(callback_query.from_user.first_name) + "Складність" + str(
-            #         user_dict_complex_task[callback_query.from_user.first_name] + 1)].append("+")
-            # if user_dict_complex_task[callback_query.from_user.first_name] + 1 == 2:
-            #     user_dict[str(callback_query.from_user.first_name) + "Складність" + str(
-            #         user_dict_complex_task[callback_query.from_user.first_name] + 1)].append("+")
-            # if user_dict_complex_task[callback_query.from_user.first_name] + 1 == 3:
+        # code = 1, 2, 3
+        if code < 4:
 
             print(user_dict)
-            # user_dict[callback_query.from_user.first_name].append("+")
-            comlex_empty = user_dict_complex_task[callback_query.from_user.first_name] + 1
-            print(str(comlex_empty) + ' пропуски')
-            if comlex_empty == 1:
+            complex_empty = user_dict_complex_task[callback_query.from_user.first_name] + 1
+            print(str(complex_empty) + ' пропуски')
+            if complex_empty == 1:
                 user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
                     user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
                     user_dict_complex_task[callback_query.from_user.first_name] + 2)].append("  ")
@@ -144,94 +122,7 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
                     user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
                     user_dict_complex_task[callback_query.from_user.first_name] + 3)].append("  ")
 
-            if comlex_empty == 2:
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] )].append("  ")
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] + 2)].append("  ")
-
-            if comlex_empty == 3:
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] - 1)].append("  ")
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] )].append("  ")
-            await bot.send_message(callback_query.from_user.id, "Протокол: " + str(
-                user_dict_protocol_number[callback_query.from_user.first_name] + 1) + '\n' +
-                                   "Складність: " + str(
-                user_dict_complex_task[callback_query.from_user.first_name] + 1) + "\n" +
-                                   list_task[user_dict_protocol_number[callback_query.from_user.first_name]][
-                                       user_dict_complex_task[callback_query.from_user.first_name]],
-                                   reply_markup=inline_kb_full)
-            user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                user_dict_complex_task[callback_query.from_user.first_name] + 1)].append("+")
-            # await bot.send_message(callback_query.from_user.id, f'Ти нажав +')
-
-        elif code == 2:
-            comlex_empty = user_dict_complex_task[callback_query.from_user.first_name] + 1
-            print(str(comlex_empty) + ' пропуски')
-            if comlex_empty == 1:
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] + 2)].append("  ")
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] + 3)].append("  ")
-
-            if comlex_empty == 2:
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] )].append("  ")
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] + 2)].append("  ")
-
-            if comlex_empty == 3:
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] - 1)].append("  ")
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] )].append("  ")
-            await bot.send_message(callback_query.from_user.id, "Протокол: " + str(
-                user_dict_protocol_number[callback_query.from_user.first_name] + 1) + '\n' + "Складність: " + str(
-                user_dict_complex_task[callback_query.from_user.first_name] + 1) + "\n" +
-                                   list_task[user_dict_protocol_number[callback_query.from_user.first_name]][
-                                       user_dict_complex_task[callback_query.from_user.first_name]],
-                                   reply_markup=inline_kb_full)
-            user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                user_dict_complex_task[callback_query.from_user.first_name] + 1)].append("-")
-
-            # if user_dict_complex_task[callback_query.from_user.first_name] + 1==1:
-            #     user_dict[str(callback_query.from_user.first_name) + "Складність" + str(
-            #         user_dict_complex_task[callback_query.from_user.first_name] + 1)].append("-")
-            # if user_dict_complex_task[callback_query.from_user.first_name] + 1 == 2:
-            #     user_dict[str(callback_query.from_user.first_name) + "Складність" + str(
-            #         user_dict_complex_task[callback_query.from_user.first_name] + 1)].append("-")
-            # if user_dict_complex_task[callback_query.from_user.first_name] + 1 == 3:
-            #     user_dict[str(callback_query.from_user.first_name) + "Складність" + str(
-            #         user_dict_complex_task[callback_query.from_user.first_name] + 1)].append("-")
-            # user_dict[callback_query.from_user.first_name].append("-")
-            print(user_dict)
-            # await bot.send_message(callback_query.from_user.id, f'Ти нажав -')
-
-        elif code == 3:
-            comlex_empty = user_dict_complex_task[callback_query.from_user.first_name] + 1
-            print(str(comlex_empty) + ' пропуски')
-            if comlex_empty == 1:
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] + 2)].append("  ")
-                user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] + 3)].append("  ")
-
-            if comlex_empty == 2:
+            if complex_empty == 2:
                 user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
                     user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
                     user_dict_complex_task[callback_query.from_user.first_name])].append("  ")
@@ -239,84 +130,79 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
                     user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
                     user_dict_complex_task[callback_query.from_user.first_name] + 2)].append("  ")
 
-            if comlex_empty == 3:
+            if complex_empty == 3:
                 user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
                     user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
                     user_dict_complex_task[callback_query.from_user.first_name] - 1)].append("  ")
                 user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
                     user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
                     user_dict_complex_task[callback_query.from_user.first_name])].append("  ")
-            await bot.send_message(callback_query.from_user.id, "Протокол: " + str(
-                user_dict_protocol_number[callback_query.from_user.first_name] + 1) + '\n' + "Складність: " + str(
-                user_dict_complex_task[callback_query.from_user.first_name] + 1) + "\n" +
-                                   list_task[user_dict_protocol_number[callback_query.from_user.first_name]][
-                                       user_dict_complex_task[callback_query.from_user.first_name]],
-                                   reply_markup=inline_kb_full)
+            await send_task(callback_query)
 
-            user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
+            current_protocol_complex = user_dict[str(callback_query.from_user.first_name) + "Протокол:" + str(
                 user_dict_protocol_number[callback_query.from_user.first_name] + 1) + "Складність:" + str(
-                user_dict_complex_task[callback_query.from_user.first_name] + 1)].append("Self")
-            print(user_dict_complex_task[callback_query.from_user.first_name])
+                user_dict_complex_task[callback_query.from_user.first_name] + 1)]
 
+            if code == 1:
+                current_protocol_complex.append('+')
+            elif code == 2:
+                current_protocol_complex.append('-')
+            elif code == 3:
+                current_protocol_complex.append('C')
 
-            # if user_dict_complex_task[callback_query.from_user.first_name] + 1==1:
-            #     user_dict[str(callback_query.from_user.first_name) + "Складність" + str(
-            #         user_dict_complex_task[callback_query.from_user.first_name] + 1)].append("Self")
-            # if user_dict_complex_task[callback_query.from_user.first_name] + 1 == 2:
-            #     user_dict[str(callback_query.from_user.first_name) + "Складність" + str(
-            #         user_dict_complex_task[callback_query.from_user.first_name] + 1)].append("Self")
-            # if user_dict_complex_task[callback_query.from_user.first_name] + 1 == 3:
-            #     user_dict[str(callback_query.from_user.first_name) + "Складність" + str(
-            #         user_dict_complex_task[callback_query.from_user.first_name] + 1)].append("Self")
             print(user_dict)
             print(user_dict_complex_task[callback_query.from_user.first_name])
-
-            # await bot.send_message(callback_query.from_user.id, f'Ти нажав Self')
 
         elif code == 4:
             if user_dict_complex_task[callback_query.from_user.first_name] == 0:
-                await bot.send_message(callback_query.from_user.id, "нiзя")
-                # await bot.answer_callback_query(callback_query.id)
+                await bot.send_message(callback_query.from_user.id, 'Спрощення цієї вправи неможливе.')
 
             else:
                 user_dict_complex_task[callback_query.from_user.first_name] -= 1
-                print(str(user_dict_complex_task[callback_query.from_user.first_name]) + "спростити")
-                await bot.send_message(callback_query.from_user.id, "Протокол: " + str(
-                    user_dict_protocol_number[callback_query.from_user.first_name] + 1) + '\n' + "Складність: " + str(
-                    user_dict_complex_task[callback_query.from_user.first_name] + 1) + "\n" +
-                                       list_task[user_dict_protocol_number[callback_query.from_user.first_name]][
-                                           user_dict_complex_task[callback_query.from_user.first_name]],
-                                       reply_markup=inline_kb_full)
-                # await bot.answer_callback_query(callback_query.id)
+                print(str(user_dict_complex_task[callback_query.from_user.first_name]) + 'спростити')
+                await send_task(callback_query)
 
         elif code == 5:
 
             try:
                 if user_dict_complex_task[callback_query.from_user.first_name] < 2:
                     user_dict_complex_task[callback_query.from_user.first_name] += 1
-                    print(str(user_dict_complex_task[callback_query.from_user.first_name]) + "ускладнити")
+                    print(str(user_dict_complex_task[callback_query.from_user.first_name]) + 'ускладнити')
                     print(user_dict_complex_task[callback_query.from_user.first_name])
-                    await bot.send_message(callback_query.from_user.id, "Протокол: " + str(user_dict_protocol_number[
-                                                                                               callback_query.from_user.first_name] + 1) + '\n' + "Складність: " + str(
-                        user_dict_complex_task[callback_query.from_user.first_name] + 1) + "\n" +
-                                           list_task[user_dict_protocol_number[callback_query.from_user.first_name]][
-                                               user_dict_complex_task[callback_query.from_user.first_name]],
-                                           reply_markup=inline_kb_full)
+                    await send_task(callback_query)
 
                 else:
-                    await bot.send_message(callback_query.from_user.id, f'ускладнення неможливе')
-                    print("ніхуя собі а всьо нізя")
+                    await bot.send_message(callback_query.from_user.id, f'Ускладнення цієї вправи неможливе.')
+                    print('ніхуя собі а всьо нізя')
             except IndexError:
 
-                await bot.send_message(callback_query.from_user.id, f'ускладнення неможливе')
-                print("да бляяяяяяяяяять")
+                await bot.send_message(callback_query.from_user.id, f'Ускладнення цієї вправи неможливе.')
+                print('да бляяяяяяяяяять')
 
     except IndexError:
-        await bot.send_message(callback_query.from_user.id, f'Достаааааааа')
-        print(str(user_dict) + " zbhjh")
+        await bot.send_message(callback_query.from_user.id, f'Ви виконали максимально можливу кількість вправ.')
+        print(str(user_dict) + ' zbhjh')
 
 
-# bot.py
+# TODO придумати нормальні назви для цих методів
+
+
+async def send_task(callback_query: types.CallbackQuery):
+    await bot.send_message(
+        callback_query.from_user.id,
+        'Протокол: ' + str(user_dict_protocol_number[callback_query.from_user.first_name] + 1) + '\n' +
+        'Складність: ' + str(user_dict_complex_task[callback_query.from_user.first_name] + 1) + '\n' +
+        list_task[user_dict_protocol_number[callback_query.from_user.first_name]]
+        [user_dict_complex_task[callback_query.from_user.first_name]],
+        reply_markup=inline_kb_full)
+
+
+async def reply_task(message: types.Message, flag='none'):
+    user_dict_flag_task[message.from_user.first_name] = 1
+    await message.reply('Протокол: ' + str(user_dict_protocol_number[message.from_user.first_name] + 1) + '\n' +
+                        'Складність: ' + str(user_dict_complex_task[message.from_user.first_name] + 1) + '\n' +
+                        list_task[user_dict_protocol_number[message.from_user.first_name]][
+                            user_dict_complex_task[message.from_user.first_name]], reply_markup=inline_kb_full)
 
 
 @dp.message_handler(text=['Наступна вправа'])
@@ -324,28 +210,26 @@ async def process_hi7_command(message: types.Message):
     try:
         print(user_dict_flag_task[message.from_user.first_name])
         if user_dict_flag_task[message.from_user.first_name] != 0:
-            print("e?")
+            print('e?')
             test = [1, 2, 3, 4, 5, 6, 7]
 
             print(str(test[:3]))
             print(str(test[3:6]))
             user_dict_complex_task[message.from_user.first_name] = 0
             user_dict_protocol_number[message.from_user.first_name] += 1
-        if user_dict_protocol_number[message.from_user.first_name] > len(list_task):
-            await message.reply("На сьогодні вправи закінчилися")
-        user_dict_flag_task[message.from_user.first_name] = 1
-        await message.reply("Протокол: " + str(user_dict_protocol_number[message.from_user.first_name] + 1) + '\n' +
-                            "Складність: " + str(user_dict_complex_task[message.from_user.first_name] + 1) + "\n" +
-                            list_task[user_dict_protocol_number[message.from_user.first_name]][
-                                user_dict_complex_task[message.from_user.first_name]], reply_markup=inline_kb_full)
-        # await message.reply("Терапія почалася", reply_markup=markup_main)
+        # щоб не дійти до #16-заглушки
+        if user_dict_protocol_number[message.from_user.first_name] >= len(list_task) - 1:
+            user_dict_protocol_number[message.from_user.first_name] = len(list_task) - 2
+            await message.reply('На сьогодні вправи закінчилися.')
+        else:
+            await reply_task(message, flag='next')
 
-        print("eeeeeeeeeeeeeeeeeeeeee?")
+        print('eeeeeeeeeeeeeeeeeeeeee?')
 
     except IndexError:
 
         print(IndexError)
-        print("Чорт")
+        print('Чорт')
 
 
 @dp.message_handler(text=['Попередня вправа'])
@@ -353,53 +237,43 @@ async def process_hi7_command(message: types.Message):
     try:
         print(user_dict_flag_task[message.from_user.first_name])
         if user_dict_flag_task[message.from_user.first_name] != 0:
-            print("e?")
+            print('e?')
             user_dict_complex_task[message.from_user.first_name] = 0
             user_dict_protocol_number[message.from_user.first_name] -= 1
         if user_dict_protocol_number[message.from_user.first_name] < 0:
             user_dict_protocol_number[message.from_user.first_name] = -1
-            await message.reply("Попередніх вправ немає")
-
+            await message.reply('Попередніх вправ немає.')
         else:
-            user_dict_flag_task[message.from_user.first_name] = 1
-            await message.reply("Протокол: " + str(user_dict_protocol_number[message.from_user.first_name] + 1) + '\n' +
-                                "Складність: " + str(user_dict_complex_task[message.from_user.first_name] + 1) + "\n" +
-                                list_task[user_dict_protocol_number[message.from_user.first_name]][
-                                    user_dict_complex_task[message.from_user.first_name]], reply_markup=inline_kb_full)
-        print("ПРОТОКОЛ НОМЕР " + str(user_dict_protocol_number[message.from_user.first_name]))
-        # await message.reply("Терапія почалася", reply_markup=markup_main)
+            await reply_task(message, flag='prev')
+        print('ПРОТОКОЛ НОМЕР ' + str(user_dict_protocol_number[message.from_user.first_name]))
 
-        print("eeeeeeeeeeeeeeeeeeeeee?")
+        print('eeeeeeeeeeeeeeeeeeeeee?')
 
     except IndexError:
 
         print(IndexError)
-        print("Чорт")
+        print('Чорт')
 
 
-def create_write_to_file(file_name):
-    f = open(file_name + ".csv", 'a+', newline='')
-
-    f.write('\n')
-    for i in range(1, 16):
-        f.write('protocol number:' + str(i))
+def write_to_file(file_name):
+    with codecs.open(file_name + '.csv', "a", encoding='utf-8') as f:
         f.write('\n')
-        f.write('Iteration:')
-        f.write(',')
-        for t in range(1, 41):
-            f.write(str(t) + ',')
-
-        f.write('\n')
-        for j in range(1, 4):
+        for protocol_number in range(1, 16):
+            f.write("Протокол #" + str(protocol_number))
             f.write('\n')
-            f.write("Complax: " + str(j) + ",")
-            for k in user_dict[str(file_name) + "Протокол:" + str(i) + "Складність:" + str(j)]:
-                f.write(str(k) + ",")
+            f.write("Ітерація")
+            f.write(',')
+            for iteration in range(1, 41):
+                f.write(str(iteration) + ',')
             f.write('\n')
-
-        f.write('\n')
-
-    f.close()
+            for sub_protocol_number in range(1, 4):
+                f.write('\n')
+                f.write(u"Етап " + str(sub_protocol_number) + ',')
+                for k in user_dict[str(file_name) + 'Протокол:' + str(protocol_number) + 'Складність:'
+                                   + str(sub_protocol_number)]:
+                    f.write(str(k) + ',')
+                f.write('\n')
+            f.write('\n')
 
 
 if __name__ == '__main__':
