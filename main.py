@@ -4,7 +4,7 @@ import codecs
 import csv
 import os
 from collections import defaultdict
-
+import pandas as pd
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.types import ParseMode
@@ -13,7 +13,7 @@ from aiogram.utils import executor, markdown
 from task_buttons import inline_kb_full
 from therapy_buttons import markup_launch, markup_main, markup_finish
 
-TOKEN = '1475672387:AAGkNWnDIh8rBt0eclIaEfKkaNqKF1CEiGQ'
+TOKEN = '1413602973:AAH_6QtvLAj53H3Ri29ln1Vhr9kgRHkFpEQ'
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
@@ -60,12 +60,22 @@ async def process_help_command(message: types.Message):
 async def process_file_command(message: types.Message):
     user_dict_complex_task[message.from_user.first_name] = 0
     user_dict_protocol_number[message.from_user.first_name] = -1
-
     write_to_file(message.from_user.first_name)
-    with open(message.from_user.first_name + ".csv", encoding='utf8') as file:
-        await message.reply('Генерую файл з результатами...', reply_markup=markup_launch)
-        await message.answer_document(file)
+    df = pd.read_csv(message.from_user.first_name + ".csv")
+    writer = pd.ExcelWriter(message.from_user.first_name + ".xlsx")
+
+    df.to_excel(writer, index=False)
+    writer.save()
+    print(df)
+
+    await message.reply('Генерую файл з результатами...', reply_markup=markup_launch)
+    f = open("C:\\Users\\dosko\\PycharmProjects\\iONKiD-bot-№1\\" + message.from_user.first_name + ".xlsx", "rb")
+
+    await message.answer_document(f)
+
+
     os.remove(message.from_user.first_name + ".csv")
+    os.remove(message.from_user.first_name + ".xlsx")
     for i in range(0, 16):
         for j in range(0, 4):
             user_dict[str(message.from_user.first_name) + "Протокол:" + str(
@@ -260,17 +270,16 @@ async def process_hi7_command(message: types.Message):
 
 def write_to_file(file_name):
     with codecs.open(file_name + '.csv', "a", encoding='utf-8-sig') as f:
+        f.write("Ітерація")
+        f.write(',')
+        for iteration in range(1, 51):
+            f.write(str(iteration) + ',')
         f.write('\n')
         for protocol_number in range(1, 16):
             f.write("Протокол #" + str(protocol_number))
             f.write('\n')
-            f.write("Ітерація")
-            f.write(',')
-            for iteration in range(1, 41):
-                f.write(str(iteration) + ',')
-            f.write('\n')
             for sub_protocol_number in range(1, 4):
-                f.write('\n')
+
                 f.write(u"Етап " + str(sub_protocol_number) + ',')
                 for k in user_dict[str(file_name) + 'Протокол:' + str(protocol_number) + 'Складність:'
                                    + str(sub_protocol_number)]:
