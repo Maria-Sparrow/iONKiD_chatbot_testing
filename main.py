@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 import codecs
 import csv
+import pandas as pd
 import os
 from collections import defaultdict
-import pandas as pd
+
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.types import ParseMode
@@ -13,7 +14,7 @@ from aiogram.utils import executor, markdown
 from task_buttons import inline_kb_full
 from therapy_buttons import markup_launch, markup_main, markup_finish
 
-TOKEN = '1413602973:AAH_6QtvLAj53H3Ri29ln1Vhr9kgRHkFpEQ'
+TOKEN = str(os.environ['TELEGRAM_TOKEN'])
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
@@ -58,24 +59,32 @@ async def process_help_command(message: types.Message):
 
 @dp.message_handler(text=['Згенерувати файл з результатами'])
 async def process_file_command(message: types.Message):
+    await message.reply('Генерую файл з результатами терапії...')
+
     user_dict_complex_task[message.from_user.first_name] = 0
     user_dict_protocol_number[message.from_user.first_name] = -1
+
     write_to_file(message.from_user.first_name)
     df = pd.read_csv(message.from_user.first_name + ".csv")
-    writer = pd.ExcelWriter(message.from_user.first_name + ".xlsx")
 
+    writer = pd.ExcelWriter(message.from_user.first_name + ".xlsx")
     df.to_excel(writer, index=False)
+
+    format_excel(writer=writer)
+
     writer.save()
+
     print(df)
 
-    await message.reply('Генерую файл з результатами...', reply_markup=markup_launch)
+    # TODO add exception handler
+
     f = open("C:\\Users\\dosko\\PycharmProjects\\iONKiD-bot-№1\\" + message.from_user.first_name + ".xlsx", "rb")
 
-    await message.answer_document(f)
-
+    await message.answer_document(f, reply_markup=markup_launch)
 
     os.remove(message.from_user.first_name + ".csv")
     os.remove(message.from_user.first_name + ".xlsx")
+
     for i in range(0, 16):
         for j in range(0, 4):
             user_dict[str(message.from_user.first_name) + "Протокол:" + str(
@@ -271,9 +280,11 @@ async def process_hi7_command(message: types.Message):
 def write_to_file(file_name):
     with codecs.open(file_name + '.csv', "a", encoding='utf-8-sig') as f:
         f.write("Ітерація")
-        f.write(',')
+        # f.write(',')
         for iteration in range(1, 51):
-            f.write(str(iteration) + ',')
+            f.write(str(','))
+            # f.write(str(iteration) + ',')
+            f.write(str(iteration))
         f.write('\n')
         for protocol_number in range(1, 16):
             f.write("Протокол #" + str(protocol_number))
@@ -286,6 +297,16 @@ def write_to_file(file_name):
                     f.write(str(k) + ',')
                 f.write('\n')
             f.write('\n')
+
+
+def format_excel(writer):
+    workbook = writer.book
+    worksheet = writer.sheets['Sheet1']
+
+    # format the first column
+    worksheet.set_column('A:A', 14, workbook.add_format({'align': 'center', 'right': 1}))
+    # format cells with results for each iteration
+    worksheet.set_column('B:AY', 4, workbook.add_format({'align': 'center'}))
 
 
 if __name__ == '__main__':
