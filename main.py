@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import pytest
 import codecs
 import csv
 import pandas as pd
 import os
 from collections import defaultdict
-
+import xlrd
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.types import ParseMode
 from aiogram.utils import executor, markdown
+# from pandas.tests.io.excel.test_xlrd import xlrd
 
 from task_buttons import inline_kb_full
 from therapy_buttons import markup_launch, markup_main, markup_finish
@@ -21,15 +23,46 @@ dp = Dispatcher(bot)
 user_dict = defaultdict(list)
 
 list_task = []
-with open('therapy_tasks.txt', encoding='utf-8') as csv_file:
-    csv_reader = csv.reader(csv_file, delimiter='%')
-    line_count = 0
-    for row in csv_reader:
-        protocol = [row[0], row[1], row[2]]
-        list_task.append(protocol)
-        line_count = line_count + 1
-    print(line_count)
-    list_task.append(('FINISH', 0))
+# with open('therapy_tasks.txt', encoding='utf-8') as csv_file:
+#     csv_reader = csv.reader(csv_file, delimiter='%')
+#     line_count = 0
+#     for row in csv_reader:
+#         protocol = [row[0], row[1], row[2]]
+#         list_task.append(protocol)
+#         line_count = line_count + 1
+#     print(line_count)
+#     list_task.append(('FINISH', 0))
+# print("--------------------------CSV----------------------------------")
+# print(list_task)
+# print("--------------------------CSV----------------------------------")
+
+path = "Book1.xlsx"
+workbook = xlrd.open_workbook(path)
+worksheet = workbook.sheet_by_index(0)
+some_list = list()
+for row in range(1, worksheet.nrows):
+    each_row_list = list()
+    stymul_list = list()
+    stymul_string = ''
+    for col in range(5, worksheet.ncols):
+        if str(worksheet.cell_value(row, col)) != '':
+            stymul_list.append(str(worksheet.cell_value(row, col)))
+            stymul_string = stymul_string + str(worksheet.cell_value(row, col)) + ', '
+    # for item in stymul_list:
+    #     stymul_string = stymul_string + str(item) + ','
+    if stymul_string == '':
+        stymul_string = "немає"
+    print(stymul_string)
+    print(stymul_list)
+    for col in range(2, 5):
+        each_row_list.append(str(worksheet.cell_value(row,
+                                                      col)) + "\n\n" + "Чи потрібно прикріпити відео виконання завдання?: " + markdown.bold(
+            str(worksheet.cell_value(row, 1))) + "\n\n" + "Стимули: " + stymul_string)
+
+    some_list.append(each_row_list)
+some_list.append(('FINISH', 0))
+print(some_list)
+list_task = some_list
 
 
 @dp.message_handler(commands=['start'])
