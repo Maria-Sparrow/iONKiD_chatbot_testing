@@ -44,20 +44,23 @@ for row in range(1, worksheet.nrows):
     each_row_list = list()
     stymul_list = list()
     stymul_string = ''
-    for col in range(5, worksheet.ncols):
+    for col in range(4, worksheet.ncols):
         if str(worksheet.cell_value(row, col)) != '':
             stymul_list.append(str(worksheet.cell_value(row, col)))
             stymul_string = stymul_string + str(worksheet.cell_value(row, col)) + ', '
-    # for item in stymul_list:
-    #     stymul_string = stymul_string + str(item) + ','
     if stymul_string == '':
         stymul_string = "немає"
-    print(stymul_string)
-    print(stymul_list)
-    for col in range(2, 5):
-        each_row_list.append(str(worksheet.cell_value(row,
-                                                      col)) + "\n\n" + "Чи потрібно прикріпити відео виконання завдання?: " + markdown.bold(
-            str(worksheet.cell_value(row, 1))) + "\n\n" + "Стимули: " + stymul_string)
+
+    for col in range(1, 4):
+        subprotocol = list()
+        subprotocol.append(str(worksheet.cell_value(row, col)))
+        subprotocol.append(stymul_string)
+        #може тут треба protocol.append(stymul_list) замість protocol.append(stymul_string)?
+        each_row_list.append(subprotocol)
+        # print(each_row_list)
+        # each_row_list.append(str(worksheet.cell_value(row,
+        #                                               col)) + "\n\n" + "Чи потрібно прикріпити відео виконання завдання?: " + markdown.bold(
+        #     str(worksheet.cell_value(row, 1))) + "\n\n" + "Стимули: " + stymul_string)
 
     some_list.append(each_row_list)
 some_list.append(('FINISH', 0))
